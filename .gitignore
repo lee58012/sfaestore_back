@@ -1,0 +1,7 @@
+
+__pycache__/
+*.pyc
+temp_videos/
+*.log
+.env
+yolov8n.pt
