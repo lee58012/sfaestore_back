@@ -2,6 +2,8 @@
 __pycache__/
 *.pyc
 temp_videos/
+stored_videos/
 *.log
 .env
 yolov8n.pt
+*.mp4
