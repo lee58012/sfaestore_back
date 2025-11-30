@@ -97,3 +97,25 @@ def upload_video(file: UploadFile = File(...)):
         "message": saved_info,
         "data": analysis_results # 분석 결과 상세
     }
+# 3. 특정 로그 및 영상 삭제
+@app.delete("/logs/{filename}")
+def delete_log(filename: str):
+    current_db = load_db()
+    
+    # 1. DB에서 해당 파일명을 가진 기록 찾기
+    # videoUrl 예시: "/videos/20240530_video.mp4" -> "20240530_video.mp4"만 비교
+    updated_db = [log for log in current_db if filename not in log["videoUrl"]]
+    
+    # 만약 개수가 줄어들었다면 (삭제된 게 있다면)
+    if len(current_db) > len(updated_db):
+        save_db(updated_db) # DB 업데이트
+        
+        # 2. 실제 파일 삭제
+        file_path = f"stored_videos/{filename}"
+        if os.path.exists(file_path):
+            os.remove(file_path)
+            print(f"파일 삭제됨: {file_path}")
+        
+        return {"status": "success", "message": "삭제 완료"}
+    
+    return {"status": "error", "message": "파일을 찾을 수 없음"}
