@@ -1,8 +1,7 @@
 import cv2
 import numpy as np
 
-# 분석할 영상 파일 이름 (여기를 내 영상 파일명으로 바꾸세요!)
-VIDEO_PATH = "temp_videos/test1.mp4" 
+VIDEO_PATH = "stored_videos/20251201_012744_1000010113.mp4" 
 
 # 좌표를 저장할 리스트
 points = []

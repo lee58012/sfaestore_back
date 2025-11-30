@@ -6,8 +6,8 @@ from shapely.geometry import Point, Polygon
 # 모델 로드
 model = YOLO('yolov8n.pt')
 # 좌표 설정
-ZONE_CHECKOUT = Polygon([(1343, 438), (1326, 737), (1441, 753), (1470, 440)])
-ZONE_ENTRY = Polygon([(299, 230), (629, 243), (670, 903), (349, 968)])
+ZONE_CHECKOUT = Polygon([(820, 333), (1004, 339), (940, 718), (734, 714)])
+ZONE_ENTRY = Polygon([(176, 181), (403, 193), (422, 636), (209, 691)])
 
 def process_video(video_path: str):
     cap = cv2.VideoCapture(video_path)
@@ -41,7 +41,6 @@ def process_video(video_path: str):
         if results[0].boxes.id is not None:
             boxes = results[0].boxes.xyxy.cpu()
             track_ids = results[0].boxes.id.int().cpu().tolist()
-
             for box, track_id in zip(boxes, track_ids):
                 x1, y1, x2, y2 = box
                 foot_point = Point((x1 + x2) / 2, y2)
@@ -61,9 +60,9 @@ def process_video(video_path: str):
                     if ZONE_CHECKOUT.contains(foot_point):
                         if customers[track_id]["checkout_start"] is None:
                             customers[track_id]["checkout_start"] = current_video_time
-                        
                         # [시간 보정] 프레임을 건너뛰었으므로 시간은 (1/fps * 건너뛴 수) 만큼 더해줌
-                        customers[track_id]["checkout_duration"] += (1.0 / fps) * SKIP_FRAMES
+                        customers[track_id]["checkout_duration"] += (6.6 / fps) * SKIP_FRAMES
+                        print(f"ID {track_id}: 계산대 체류 중... {customers[track_id]['checkout_duration']:.2f}초") 
                     else:
                         customers[track_id]["checkout_start"] = None
 
