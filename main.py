@@ -95,7 +95,8 @@ def upload_video(file: UploadFile = File(...)):
     return {
         "status": "success", 
         "message": saved_info,
-        "data": analysis_results # 분석 결과 상세
+        "data": analysis_results, # 분석 결과 상세
+        "saved_video_url": f"/videos/{datetime.now().strftime('%Y%m%d_%H%M%S')}_{file.filename}" if len(analysis_results) > 0 else None
     }
 # 3. 특정 로그 및 영상 삭제
 @app.delete("/logs/{filename}")

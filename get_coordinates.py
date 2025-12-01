@@ -1,7 +1,7 @@
 import cv2
 import numpy as np
 
-VIDEO_PATH = "stored_videos/20251201_012744_1000010113.mp4" 
+VIDEO_PATH = "stored_videos/case2.mp4" 
 
 # 좌표를 저장할 리스트
 points = []
