@@ -15,9 +15,10 @@ def get_model():
     return model
 
 model = None
-ZONE_CHECKOUT = Polygon([(468, 120), (672, 110), (661, 469), (487, 472)])
-ZONE_ENTRY = Polygon([(112, 131), (265, 136), (281, 439), (136, 471)])
+ZONE_CHECKOUT = Polygon([(727, 185), (985, 160), (978, 713), (733, 716)])
+ZONE_ENTRY = Polygon([(167, 204), (394, 210), (424, 650), (213, 705)])
 MIN_STORE_STAY = 5
+MIN_OVERLAP_RATIO = 0.50
 
 def process_video(video_path: str):
     cap = cv2.VideoCapture(video_path)
@@ -56,9 +57,7 @@ def process_video(video_path: str):
                 if inter.is_empty:
                     continue
                 overlap_ratio = inter.area / box_poly.area
-                # 임계값: 교차 면적 / 박스 면적
-                # 0.12로 설정하면 passing-by를 대부분 걸러내면서 짧은 체류(≈1s)를 일부 포착합니다.
-                MIN_OVERLAP_RATIO = 0.12
+                # 임계값: 교차 면적 / 박스 면적 (모듈 상단의 MIN_OVERLAP_RATIO 사용)
                 if overlap_ratio >= MIN_OVERLAP_RATIO:
                     all_checkout_frames.append(frame_count)
                     break
@@ -80,27 +79,42 @@ def process_video(video_path: str):
             seg_start = f
         prev = f
     segments.append((seg_start, prev))
+    # 필터: 계산대 구역에 최소로 머물러야 하는 연속 구간 길이 (초)
+    # 높여서 지나가는 경우를 더 엄격히 배제
+    MIN_CHECKOUT_SEGMENT = 4.5
 
-    # 가장 긴 구간 선택
-    best = max(segments, key=lambda s: s[1] - s[0])
+    # 허용되는 세그먼트만 남김 (연속 구간의 길이가 최소값 이상)
+    valid_segments = []
+    for s, e in segments:
+        seg_duration = (e - s) * time_per_frame
+        if seg_duration >= MIN_CHECKOUT_SEGMENT:
+            valid_segments.append((s, e))
+
+    # 유효한 세그먼트가 없으면 계산대 체류로 보지 않음 -> 위험(계산대 미방문)
+    if not valid_segments:
+        log_type = f"위험 (계산대 미방문: 0초)"
+        timestamp_frame = last_person_frame if last_person_frame is not None else all_checkout_frames[-1]
+        timestamp_str = time.strftime('%M:%S', time.gmtime(timestamp_frame * time_per_frame))
+        logs.append({"timestamp": timestamp_str, "type": log_type, "videoUrl": ""})
+        return logs
+
+    # 유효 세그먼트 중 가장 긴 구간 선택
+    best = max(valid_segments, key=lambda s: s[1] - s[0])
     duration = (best[1] - best[0]) * time_per_frame
 
-    if duration >= 15:
-        # 정상: 로그를 반환하지 않음 (영상 저장 X)
+    # classification: 정상 >=10, 경고 >=3
+    if duration >= 10:
         return logs
     elif duration >= 3:
         log_type = f"경고 (결제시간 부족: {int(duration)}초)"
     else:
         log_type = f"위험 (계산대 미방문: {int(duration)}초)"
 
-    # 이상행동(경고/위험)인 경우: 타임스탬프 결정
-    # - 경고: 계산대에서의 마지막 감지 프레임(최장 구간의 끝)
-    # - 위험(계산대 미방문): 나가기 직전의 영상 -> 마지막으로 사람 감지된 프레임 사용
+    # 경고는 계산대 세그먼트의 끝을 타임스탬프로 사용
     if log_type.startswith("경고"):
         timestamp_frame = best[1]
     else:
-        # 위험인 경우: 전체 프레임에서 마지막으로 사람 감지된 프레임을 우선 사용
-        timestamp_frame = last_person_frame if last_person_frame is not None else all_checkout_frames[-1]
+        timestamp_frame = last_person_frame if last_person_frame is not None else best[1]
 
     timestamp_str = time.strftime('%M:%S', time.gmtime(timestamp_frame * time_per_frame))
     logs.append({"timestamp": timestamp_str, "type": log_type, "videoUrl": ""})
